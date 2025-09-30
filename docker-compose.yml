@@ -1,0 +1,15 @@
+services:
+  sample-app:
+    container_name: sample-app
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    networks:
+      - sample-app-network
+
+networks:
+  sample-app-network:
+    name: sample-app-network
+    driver: bridge
