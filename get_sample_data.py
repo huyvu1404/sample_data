@@ -48,14 +48,15 @@ def get_sample_data(df, sample_size, sentiment_rates):
             counts["Empty"] = sample_size - counts["Positive"] - counts["Negative"] - counts["Neutral"]
 
             for sentiment in sentiments:
-                subset = sub_df[sub_df["Sentiment"] == sentiment]
-                if not subset.empty and counts[sentiment] > 0:
-                    sampled = subset.sample(counts[sentiment], replace=True)
-                    sampled_list.append(sampled)
+                if counts[sentiment] > 0:            
+                    subset = sub_df[sub_df["Sentiment"] == sentiment]
+                    if not subset.empty:
+                        sampled = subset.sample(counts[sentiment], replace=False)
+                        sampled_list.append(sampled)
             if counts["Empty"] > 0:
                 empty_subset = sub_df[sub_df["Sentiment"].isnull() | (sub_df["Sentiment"] == "")]
                 if not empty_subset.empty:
-                    sampled_empty = empty_subset.sample(counts["Empty"], replace=True)
+                    sampled_empty = empty_subset.sample(counts["Empty"], replace=False)
                     sampled_list.append(sampled_empty)
 
         return pd.concat(sampled_list, ignore_index=True) if sampled_list else pd.DataFrame()
