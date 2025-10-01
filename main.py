@@ -20,11 +20,10 @@ app.add_middleware(
 
 @app.post("/api/sample")
 async def upload_file(file: UploadFile = File(...)):
-    contents = await file.read()
-    df, sentiment_rates = read_excel(BytesIO(contents))
-    if df.empty:
-        return {"error": "No data found in the provided Excel files."}
     try:
+        df, sentiment_rates = read_excel(file.file)
+        if df.empty:
+            return {"error": "No data found in the provided Excel files."}
         total_entries = len(df)
         if total_entries == 0:
             return {"error": "No valid entries found."}

@@ -1,49 +1,68 @@
 import  pandas as pd
 
+import pandas as pd
+
 def read_excel(path):
-    all_data = pd.DataFrame()
     try:
         xls = pd.ExcelFile(path)
-        for sheet_name in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            all_data = pd.concat([all_data, df], ignore_index=True)
-            positive_rate = (all_data["Sentiment"] == "Positive").sum() / len(all_data)
-            negative_rate = (all_data["Sentiment"] == "Negative").sum() / len(all_data)
-            neutral_rate = 1 - positive_rate - negative_rate
-            sentiment_rates = {
-                "Positive": positive_rate,
-                "Negative": negative_rate,
-                "Neutral": neutral_rate
-            }
-        return all_data, sentiment_rates
-    except Exception as e:
-        print(f"Error processing Excel files: {e}")
-    return all_data, {}
+        frames = [pd.read_excel(xls, sheet_name=s) for s in xls.sheet_names]
+        all_data = pd.concat(frames, ignore_index=True)
 
-def get_sample_data(df, sample_size, sentiment_rates):    
-    topics = df["Topic"].unique().tolist()
+        if all_data.empty:
+            return all_data, {}
+
+        positive_rate = (all_data["Sentiment"] == "Positive").sum() / len(all_data)
+        negative_rate = (all_data["Sentiment"] == "Negative").sum() / len(all_data)
+        neutral_rate = (all_data["Sentiment"] == "Neutral").sum() / len(all_data)
+        empty_rate = 1 - (positive_rate + negative_rate + neutral_rate)
+
+        sentiment_rates = {
+            "Positive": positive_rate,
+            "Negative": negative_rate,
+            "Neutral": neutral_rate,
+            "Empty": empty_rate
+        }
+
+        return all_data, sentiment_rates
+
+    except Exception as e:
+        raise ValueError(f"Error processing Excel files: {e}")
+
+
+import pandas as pd
+
+def get_sample_data(df, sample_size, sentiment_rates):
     try:
-        sampled_df = pd.DataFrame()
-        for topic in topics:
-            sub_df = df[df["Topic"] == topic].reset_index(drop=True)
-            if sample_size:
-                positive_count = int(sentiment_rates["Positive"] * sample_size)
-                negative_count = int(sentiment_rates["Negative"] * sample_size)
-                neutral_count = sample_size - positive_count - negative_count
-                positive_samples = sub_df[sub_df["Sentiment"] == "Positive"].sample(positive_count, replace=True) if sub_df[sub_df["Sentiment"] == "Positive"].shape[0] > 0 else None
-                negative_samples = sub_df[sub_df["Sentiment"] == "Negative"].sample(negative_count, replace=True) if sub_df[sub_df["Sentiment"] == "Negative"].shape[0] > 0 else None
-                neutral_samples = sub_df[sub_df["Sentiment"] == "Neutral"].sample(neutral_count, replace=True) if sub_df[sub_df["Sentiment"] == "Neutral"].shape[0] > 0 else None
-                if positive_samples is not None:
-                    sampled_df = pd.concat([sampled_df, positive_samples], ignore_index=True)
-                if negative_samples is not None:
-                    sampled_df = pd.concat([sampled_df, negative_samples], ignore_index=True)
-                if neutral_samples is not None:
-                    sampled_df = pd.concat([sampled_df, neutral_samples], ignore_index=True)
-            else:
-                sampled_df = pd.concat([sampled_df, sub_df], ignore_index=True)
-        return sampled_df
+        if not sample_size:
+            return df.copy()
+
+        sampled_list = []
+        sentiments = ["Positive", "Negative", "Neutral"]
+        for topic in df["Topic"].unique():
+            sub_df = df[df["Topic"] == topic]
+            counts = {
+                "Positive": int(sentiment_rates["Positive"] * sample_size),
+                "Negative": int(sentiment_rates["Negative"] * sample_size),
+                "Neutral": int(sentiment_rates["Neutral"] * sample_size),
+            }
+            counts["Empty"] = sample_size - counts["Positive"] - counts["Negative"] - counts["Neutral"]
+
+            for sentiment in sentiments:
+                subset = sub_df[sub_df["Sentiment"] == sentiment]
+                if not subset.empty and counts[sentiment] > 0:
+                    sampled = subset.sample(counts[sentiment], replace=True)
+                    sampled_list.append(sampled)
+            if counts["Empty"] > 0:
+                empty_subset = sub_df[sub_df["Sentiment"].isnull() | (sub_df["Sentiment"] == "")]
+                if not empty_subset.empty:
+                    sampled_empty = empty_subset.sample(counts["Empty"], replace=True)
+                    sampled_list.append(sampled_empty)
+
+        return pd.concat(sampled_list, ignore_index=True) if sampled_list else pd.DataFrame()
+
     except Exception as e:
         print(f"Error during sampling: {e}")
-    return None
+        return pd.DataFrame()
+
 
 
