@@ -1,6 +1,5 @@
-import  pandas as pd
-
 import pandas as pd
+import numpy as np
 
 def read_excel(path):
     try:
@@ -59,7 +58,9 @@ def get_sample_data(df, sample_size, sentiment_rates):
                     sampled_empty = empty_subset.sample(counts["Empty"], replace=False)
                     sampled_list.append(sampled_empty)
 
-        return pd.concat(sampled_list, ignore_index=True) if sampled_list else pd.DataFrame()
+        selected_rows = pd.concat(sampled_list) if sampled_list else pd.DataFrame()
+        df["Selected"] = np.where(df.index.isin(selected_rows.index), "x", "")
+        return df
 
     except Exception as e:
         print(f"Error during sampling: {e}")
