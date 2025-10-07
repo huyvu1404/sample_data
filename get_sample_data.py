@@ -21,7 +21,6 @@ def read_excel(path):
             "Neutral": neutral_rate,
             "Empty": empty_rate
         }
-
         return all_data, sentiment_rates
 
     except Exception as e:
@@ -34,18 +33,16 @@ def get_sample_data(df, sample_size, sentiment_rates):
     try:
         if not sample_size:
             return df.copy()
-
         sampled_list = []
         sentiments = ["Positive", "Negative", "Neutral"]
         for topic in df["Topic"].unique():
-            sub_df = df[df["Topic"] == topic]
+            sub_df = df[df["Topic"] == topic][["Sentiment"]]
             counts = {
                 "Positive": int(sentiment_rates["Positive"] * sample_size),
                 "Negative": int(sentiment_rates["Negative"] * sample_size),
                 "Neutral": int(sentiment_rates["Neutral"] * sample_size),
             }
             counts["Empty"] = sample_size - counts["Positive"] - counts["Negative"] - counts["Neutral"]
-
             for sentiment in sentiments:
                 if counts[sentiment] > 0:            
                     subset = sub_df[sub_df["Sentiment"] == sentiment]
@@ -59,9 +56,9 @@ def get_sample_data(df, sample_size, sentiment_rates):
                     sampled_list.append(sampled_empty)
 
         selected_rows = pd.concat(sampled_list) if sampled_list else pd.DataFrame()
-        df["Selected"] = np.where(df.index.isin(selected_rows.index), "x", "")
+        df["Sampled"] = np.where(df.index.isin(selected_rows.index), "x", "")
         return df
-
+    
     except Exception as e:
         print(f"Error during sampling: {e}")
         return pd.DataFrame()

@@ -1,11 +1,13 @@
 
 from io import BytesIO
+import pandas as pd
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from get_sample_data import get_sample_data, read_excel
 from calculate_sample_size import get_sample_size
+from utils import sanitize_excel_values
 import os
 load_dotenv()
 
@@ -29,10 +31,13 @@ async def upload_file(file: UploadFile = File(...)):
             return {"error": "No valid entries found."}
         sample_size = get_sample_size(N=total_entries)
         sampled_df = get_sample_data(df, sample_size, sentiment_rates)
+        
         if sampled_df is None:
             return {"error": "Sampling failed."}
+        sampled_df = sanitize_excel_values(sampled_df)
         buf = BytesIO()
-        sampled_df.to_excel(buf, index=False)
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            sampled_df.to_excel(writer, index=False)
         buf.seek(0)
         return StreamingResponse(
             buf,
