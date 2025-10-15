@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from calculate_sample_size import get_sample_size
 
 def read_excel(path):
     try:
@@ -8,25 +9,14 @@ def read_excel(path):
         all_data = pd.concat(frames, ignore_index=True)
 
         if all_data.empty:
-            return all_data, {}
+            return all_data
         all_data["Sentiment"] = (
             all_data["Sentiment"]
             .fillna("")                
             .str.strip()                 
             .str.capitalize()           
         )
-        positive_rate = (all_data["Sentiment"] == "Positive").sum() / len(all_data)
-        negative_rate = (all_data["Sentiment"] == "Negative").sum() / len(all_data)
-        neutral_rate = (all_data["Sentiment"] == "Neutral").sum() / len(all_data)
-        empty_rate = (all_data["Sentiment"] == "").sum() / len(all_data)
-
-        sentiment_rates = {
-            "Positive": positive_rate,
-            "Negative": negative_rate,
-            "Neutral": neutral_rate,
-            "Empty": empty_rate
-        }
-        return all_data, sentiment_rates
+        return all_data
 
     except Exception as e:
         raise ValueError(f"Error processing Excel files: {e}")
@@ -34,34 +24,33 @@ def read_excel(path):
 
 import pandas as pd
 
-def get_sample_data(df, sample_size, sentiment_rates):
+def get_sample_data(df):
     try:
-        if not sample_size:
-            return df.copy()
         sampled_list = []
-        sentiments = ["Positive", "Negative", "Neutral"]
-        
-        sub_df = df[["Sentiment"]]
-        counts = {
-            "Positive": int(sentiment_rates["Positive"] * sample_size),
-            "Negative": int(sentiment_rates["Negative"] * sample_size),
-            "Neutral": int(sentiment_rates["Neutral"] * sample_size),
-            "Empty": int(sentiment_rates["Empty"] * sample_size)
-        }
-        
-        for sentiment in sentiments:
-            if counts[sentiment] > 0:            
-                subset = sub_df[sub_df["Sentiment"] == sentiment]
-                if not subset.empty:
-                    sampled = subset.sample(counts[sentiment], replace=False)
-                    sampled_list.append(sampled)
-                   
-        if counts["Empty"] > 0:
-            empty_subset = sub_df[sub_df["Sentiment"] == ""]
-            if len(empty_subset) > 0:
-                sampled_empty = empty_subset.sample(counts["Empty"], replace=False)
-                sampled_list.append(sampled_empty)
-    
+        for topic in df["Topic"].unique():
+            sub_df = df[df["Topic"] == topic]
+            positive_rate = (sub_df["Sentiment"] == "Positive").sum() / len(sub_df)
+            negative_rate = (sub_df["Sentiment"] == "Negative").sum() / len(sub_df)
+            neutral_rate = (sub_df["Sentiment"] == "Neutral").sum() / len(sub_df)
+            empty_rate = (sub_df["Sentiment"] == "").sum() / len(sub_df)
+
+            sample_size = get_sample_size(N=len(sub_df))
+            print(f"Topic {topic} has total {len(sub_df)} records with sample size: {sample_size}")
+            if sample_size > 0:
+                counts = {
+                    "Positive": round(positive_rate * sample_size),
+                    "Negative": round(negative_rate * sample_size),
+                    "Neutral": round(neutral_rate * sample_size),
+                    "Empty": round(empty_rate * sample_size)
+                }
+            
+                for sentiment in counts.keys():
+                    if counts[sentiment] > 0:            
+                        subset = sub_df[sub_df["Sentiment"] == sentiment] if sentiment != "Empty" else sub_df[sub_df["Sentiment"] == ""]
+                        if len(subset) > 0:
+                            count = min(counts[sentiment], len(subset)) # Đảm bảo không lấy mẫu nhiều hơn dữ liệu gốc
+                            sampled = subset.sample(count, replace=False)
+                            sampled_list.append(sampled)
 
         selected_rows = pd.concat(sampled_list) if sampled_list else pd.DataFrame()
         df["Sampled"] = np.where(df.index.isin(selected_rows.index), "x", "")

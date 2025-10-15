@@ -1,6 +1,7 @@
 
 from io import BytesIO
 import pandas as pd
+import uvicorn
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,14 +24,14 @@ app.add_middleware(
 @app.post("/api/sample")
 async def upload_file(file: UploadFile = File(...)):
     try:
-        df, sentiment_rates = read_excel(file.file)
+        df = read_excel(file.file)
         if df.empty:
             return {"error": "No data found in the provided Excel files."}
         total_entries = len(df)
         if total_entries == 0:
             return {"error": "No valid entries found."}
-        sample_size = get_sample_size(N=total_entries)
-        sampled_df = get_sample_data(df, sample_size, sentiment_rates)
+        # sample_size = get_sample_size(N=total_entries)
+        sampled_df = get_sample_data(df)
         
         if sampled_df is None:
             return {"error": "Sampling failed."}
@@ -48,5 +49,5 @@ async def upload_file(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    import uvicorn
+    
     uvicorn.run(app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", 8000)))
