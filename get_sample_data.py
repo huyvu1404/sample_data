@@ -24,7 +24,7 @@ def read_excel(path):
 
 import pandas as pd
 
-def get_sample_data(df):
+def get_sample_data(df, params_dict):
     try:
         sampled_list = []
         for topic in df["Topic"].unique():
@@ -33,9 +33,8 @@ def get_sample_data(df):
             negative_rate = (sub_df["Sentiment"] == "Negative").sum() / len(sub_df)
             neutral_rate = (sub_df["Sentiment"] == "Neutral").sum() / len(sub_df)
             empty_rate = (sub_df["Sentiment"] == "").sum() / len(sub_df)
-
-            sample_size = get_sample_size(N=len(sub_df))
-            print(f"Topic {topic} has total {len(sub_df)} records with sample size: {sample_size}")
+            p, E, confidence = params_dict.get("response_distribution"), params_dict.get("margin"), params_dict.get("confidence")
+            sample_size = get_sample_size(p, E, confidence, N=len(sub_df))
             if sample_size > 0:
                 counts = {
                     "Positive": round(positive_rate * sample_size),

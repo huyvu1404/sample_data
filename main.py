@@ -2,7 +2,7 @@
 from io import BytesIO
 import pandas as pd
 import uvicorn
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -10,6 +10,7 @@ from get_sample_data import get_sample_data, read_excel
 from calculate_sample_size import get_sample_size
 from utils import sanitize_excel_values
 import os
+import json
 load_dotenv()
 
 app = FastAPI()
@@ -22,16 +23,17 @@ app.add_middleware(
 )
 
 @app.post("/api/sample")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), params: str = Form(...)):
     try:
         df = read_excel(file.file)
+        params_dict = json.loads(params)
         if df.empty:
             return {"error": "No data found in the provided Excel files."}
         total_entries = len(df)
         if total_entries == 0:
             return {"error": "No valid entries found."}
         # sample_size = get_sample_size(N=total_entries)
-        sampled_df = get_sample_data(df)
+        sampled_df = get_sample_data(df, params_dict)
         
         if sampled_df is None:
             return {"error": "Sampling failed."}
